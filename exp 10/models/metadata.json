@@ -1,0 +1,110 @@
+{
+    "dataset_info": {
+        "total_samples": 600,
+        "train_samples": 480,
+        "test_samples": 120,
+        "features": [
+            "People",
+            "AC_Usage_Hours",
+            "Number_of_Fans",
+            "Number_of_Appliances",
+            "Daily_Usage_Hours",
+            "Outside_Temperature",
+            "Previous_Consumption"
+        ],
+        "target": "Electricity_Consumption",
+        "missing_values": {
+            "People": 0,
+            "AC_Usage_Hours": 0,
+            "Number_of_Fans": 0,
+            "Number_of_Appliances": 0,
+            "Daily_Usage_Hours": 0,
+            "Outside_Temperature": 0,
+            "Previous_Consumption": 0,
+            "Electricity_Consumption": 0
+        },
+        "duplicates": 0,
+        "is_synthetic": true
+    },
+    "model_comparison": {
+        "Linear Regression": {
+            "MAE": 0.6101,
+            "MSE": 0.5792,
+            "RMSE": 0.761,
+            "R2": 0.9881
+        },
+        "Decision Tree Regressor": {
+            "MAE": 0.946,
+            "MSE": 1.4613,
+            "RMSE": 1.2088,
+            "R2": 0.97
+        },
+        "Random Forest Regressor": {
+            "MAE": 0.7723,
+            "MSE": 1.0096,
+            "RMSE": 1.0048,
+            "R2": 0.9792
+        }
+    },
+    "best_model": {
+        "name": "Linear Regression",
+        "metrics": {
+            "MAE": 0.6101,
+            "MSE": 0.5792,
+            "RMSE": 0.761,
+            "R2": 0.9881
+        }
+    },
+    "sample_records": [
+        {
+            "People": 3,
+            "AC_Usage_Hours": 3.5,
+            "Number_of_Fans": 3,
+            "Number_of_Appliances": 8,
+            "Daily_Usage_Hours": 10.5,
+            "Outside_Temperature": 22.2,
+            "Previous_Consumption": 14.07,
+            "Electricity_Consumption": 14.74
+        },
+        {
+            "People": 7,
+            "AC_Usage_Hours": 0.4,
+            "Number_of_Fans": 6,
+            "Number_of_Appliances": 14,
+            "Daily_Usage_Hours": 14.7,
+            "Outside_Temperature": 25.0,
+            "Previous_Consumption": 21.08,
+            "Electricity_Consumption": 19.99
+        },
+        {
+            "People": 4,
+            "AC_Usage_Hours": 0.0,
+            "Number_of_Fans": 4,
+            "Number_of_Appliances": 12,
+            "Daily_Usage_Hours": 11.2,
+            "Outside_Temperature": 22.4,
+            "Previous_Consumption": 12.93,
+            "Electricity_Consumption": 14.1
+        },
+        {
+            "People": 3,
+            "AC_Usage_Hours": 0.0,
+            "Number_of_Fans": 3,
+            "Number_of_Appliances": 8,
+            "Daily_Usage_Hours": 11.5,
+            "Outside_Temperature": 20.2,
+            "Previous_Consumption": 10.84,
+            "Electricity_Consumption": 10.52
+        },
+        {
+            "People": 2,
+            "AC_Usage_Hours": 0.0,
+            "Number_of_Fans": 3,
+            "Number_of_Appliances": 5,
+            "Daily_Usage_Hours": 9.3,
+            "Outside_Temperature": 21.0,
+            "Previous_Consumption": 7.91,
+            "Electricity_Consumption": 7.59
+        }
+    ]
+}
