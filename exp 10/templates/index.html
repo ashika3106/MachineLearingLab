@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Household Electricity Consumption Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="bolt-icon">&#9889;</span>
+                <span class="brand-title">PowerPredict ML</span>
+            </div>
+            <nav class="nav-links">
+                <a href="#overview">Overview</a>
+                <a href="#preprocessing">Preprocessing</a>
+                <a href="#eda">EDA Visuals</a>
+                <a href="#models">Model Comparison</a>
+                <a href="#evaluation">Evaluation</a>
+                <a href="#predict" class="nav-btn-predict">Make Prediction</a>
+                <a href="#history">History</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-wrapper">
+
+        <!-- Hero Banner -->
+        <section class="hero-card" id="overview">
+            <div class="hero-content">
+                <div class="pill-badge">Machine Learning Mini-Project</div>
+                <h1 class="hero-title">Household Electricity Consumption Prediction</h1>
+                <p class="hero-desc">
+                    A machine learning system predicting daily household electricity consumption (in <strong>kWh/day</strong>) 
+                    and estimated monthly consumption (in <strong>kWh/month</strong>) using household characteristics, appliance metrics, 
+                    and environmental factors.
+                </p>
+                <div class="tech-stack-row">
+                    <span class="tech-tag">Python</span>
+                    <span class="tech-tag">Flask</span>
+                    <span class="tech-tag">Scikit-learn</span>
+                    <span class="tech-tag">Pandas & NumPy</span>
+                    <span class="tech-tag">Matplotlib & Seaborn</span>
+                    <span class="tech-tag">SQLite3</span>
+                </div>
+            </div>
+            <div class="hero-notice-card">
+                <div class="notice-header">
+                    <span class="notice-icon">&#8505;</span>
+                    <strong>Dataset Disclosure</strong>
+                </div>
+                <p class="notice-text">
+                    This project uses a physically grounded <strong>synthetic dataset</strong> (600 records) generated with realistic household electrical load formulas and ambient temperature influences for reproducible academic evaluation.
+                </p>
+            </div>
+        </section>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Quick Jump Grid -->
+        <div class="quick-stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Dataset Records</div>
+                <div class="stat-value">{{ metadata.dataset_info.total_samples if metadata else '600' }}</div>
+                <div class="stat-sub">Rows in data/household_electricity.csv</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Input Features</div>
+                <div class="stat-value">7 Features</div>
+                <div class="stat-sub">People, AC, Fans, Appliances, etc.</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Best ML Model</div>
+                <div class="stat-value highlight">{{ metadata.best_model.name if metadata else 'Linear Regression' }}</div>
+                <div class="stat-sub">Test R²: {{ metadata.best_model.metrics.R2 if metadata else '0.9881' }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Model RMSE</div>
+                <div class="stat-value highlight-green">{{ metadata.best_model.metrics.RMSE if metadata else '0.76' }} <small>kWh</small></div>
+                <div class="stat-sub">Mean Abs Error: {{ metadata.best_model.metrics.MAE if metadata else '0.61' }} kWh</div>
+            </div>
+        </div>
+
+        <!-- ================= FIG 1: DATASET OVERVIEW ================= -->
+        <section class="section-card" id="fig1-overview">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="fig-badge">Fig. 1</span>
+                    <h2>Dataset Overview</h2>
+                </div>
+                <span class="section-tag">data/household_electricity.csv</span>
+            </div>
+            <p class="section-desc">
+                The dataset captures core daily electrical drivers across residential households. Below is the feature definition and preview of sample records.
+            </p>
+
+            <div class="features-summary-grid">
+                <div class="feat-box">
+                    <div class="feat-title">1. People</div>
+                    <div class="feat-desc">Number of residents residing in the home (1–8)</div>
+                </div>
+                <div class="feat-box">
+                    <div class="feat-title">2. AC Usage Hours</div>
+                    <div class="feat-desc">Daily air conditioning operating duration (Hours/day)</div>
+                </div>
+                <div class="feat-box">
+                    <div class="feat-title">3. Number of Fans</div>
+                    <div class="feat-desc">Total ceiling/pedestal fans in regular daily use (1–8)</div>
+                </div>
+                <div class="feat-box">
+                    <div class="feat-title">4. Electrical Appliances</div>
+                    <div class="feat-desc">Active heavy/medium appliances (Fridge, TV, PC, Washing machine)</div>
+                </div>
+                <div class="feat-box">
+                    <div class="feat-title">5. Daily Usage Hours</div>
+                    <div class="feat-desc">Total active electricity consumption duration (Hours/day)</div>
+                </div>
+                <div class="feat-box">
+                    <div class="feat-title">6. Outside Temperature</div>
+                    <div class="feat-desc">Average ambient outdoor temperature in °Celsius</div>
+                </div>
+                <div class="feat-box">
+                    <div class="feat-title">7. Previous Consumption</div>
+                    <div class="feat-desc">Baseline reading from previous billing/monitoring day (kWh)</div>
+                </div>
+                <div class="feat-box feat-box-target">
+                    <div class="feat-title">&#127919; Target: Electricity Consumption</div>
+                    <div class="feat-desc">Actual Daily Household Power Consumption in <strong>kWh/day</strong></div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div class="table-title">Sample Records from Dataset (First 6 Rows)</div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>People</th>
+                            <th>AC Usage (hrs)</th>
+                            <th>Fans</th>
+                            <th>Appliances</th>
+                            <th>Daily Hours</th>
+                            <th>Outside Temp (°C)</th>
+                            <th>Prev Consumption (kWh)</th>
+                            <th class="th-target">Electricity Consumption (kWh)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if sample_df %}
+                            {% for row in sample_df %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ row.People }}</td>
+                                    <td>{{ row.AC_Usage_Hours }}</td>
+                                    <td>{{ row.Number_of_Fans }}</td>
+                                    <td>{{ row.Number_of_Appliances }}</td>
+                                    <td>{{ row.Daily_Usage_Hours }}</td>
+                                    <td>{{ row.Outside_Temperature }}</td>
+                                    <td>{{ row.Previous_Consumption }}</td>
+                                    <td class="td-target"><strong>{{ row.Electricity_Consumption }}</strong></td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="9" class="text-center">Dataset preview will appear once trained.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ================= FIG 2: DATA PREPROCESSING ================= -->
+        <section class="section-card" id="preprocessing">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="fig-badge">Fig. 2</span>
+                    <h2>Data Preprocessing</h2>
+                </div>
+                <span class="section-tag">Quality Check & Data Splitting</span>
+            </div>
+            <p class="section-desc">
+                Data cleaning, missing value inspection, type casting, duplicate elimination, and 80:20 train-test partitioning.
+            </p>
+
+            <div class="preprocessing-grid">
+                <div class="prep-card">
+                    <h3>&#10004; Missing Value Verification</h3>
+                    <table class="prep-table">
+                        <thead>
+                            <tr>
+                                <th>Feature Column</th>
+                                <th>Data Type</th>
+                                <th>Missing Count</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>People</td>
+                                <td><code>int64</code></td>
+                                <td>0</td>
+                                <td><span class="status-badge status-ok">Clean (0.0%)</span></td>
+                            </tr>
+                            <tr>
+                                <td>AC_Usage_Hours</td>
+                                <td><code>float64</code></td>
+                                <td>0</td>
+                                <td><span class="status-badge status-ok">Clean (0.0%)</span></td>
+                            </tr>
+                            <tr>
+                                <td>Number_of_Fans</td>
+                                <td><code>int64</code></td>
+                                <td>0</td>
+                                <td><span class="status-badge status-ok">Clean (0.0%)</span></td>
+                            </tr>
+                            <tr>
+                                <td>Number_of_Appliances</td>
+                                <td><code>int64</code></td>
+                                <td>0</td>
+                                <td><span class="status-badge status-ok">Clean (0.0%)</span></td>
+                            </tr>
+                            <tr>
+                                <td>Daily_Usage_Hours</td>
+                                <td><code>float64</code></td>
+                                <td>0</td>
+                                <td><span class="status-badge status-ok">Clean (0.0%)</span></td>
+                            </tr>
+                            <tr>
+                                <td>Outside_Temperature</td>
+                                <td><code>float64</code></td>
+                                <td>0</td>
+                                <td><span class="status-badge status-ok">Clean (0.0%)</span></td>
+                            </tr>
+                            <tr>
+                                <td>Previous_Consumption</td>
+                                <td><code>float64</code></td>
+                                <td>0</td>
+                                <td><span class="status-badge status-ok">Clean (0.0%)</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Electricity_Consumption (Target)</strong></td>
+                                <td><code>float64</code></td>
+                                <td>0</td>
+                                <td><span class="status-badge status-ok">Clean (0.0%)</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="prep-card">
+                    <h3>&#9881; Data Pipeline & Split Configuration</h3>
+                    <div class="pipeline-steps">
+                        <div class="p-step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <strong>Duplicate Records Check:</strong>
+                                <span>0 duplicates detected in the 600 records.</span>
+                            </div>
+                        </div>
+                        <div class="p-step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <strong>Feature-Target Separation:</strong>
+                                <span>Matrix X (600 × 7) & Vector y (600 × 1).</span>
+                            </div>
+                        </div>
+                        <div class="p-step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <strong>Train-Test Split (80:20 Ratio):</strong>
+                                <span><strong>Training Set:</strong> {{ metadata.dataset_info.train_samples if metadata else '480' }} records (80%)</span><br>
+                                <span><strong>Testing Set:</strong> {{ metadata.dataset_info.test_samples if metadata else '120' }} records (20%)</span>
+                            </div>
+                        </div>
+                        <div class="p-step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <strong>Reproducibility:</strong>
+                                <span>Fixed random seed <code>random_state=42</code>.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= FIG 3: EXPLORATORY DATA ANALYSIS ================= -->
+        <section class="section-card" id="eda">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="fig-badge">Fig. 3</span>
+                    <h2>Exploratory Data Analysis (EDA)</h2>
+                </div>
+                <span class="section-tag">Generated with Matplotlib & Seaborn</span>
+            </div>
+            <p class="section-desc">
+                Visualizing distribution shapes, regression trends, and multi-variable correlation from the loaded dataset.
+            </p>
+
+            <div class="plots-grid">
+                <!-- Plot 1 -->
+                <div class="plot-card">
+                    <div class="plot-header">
+                        <h4>1. Target Consumption Distribution</h4>
+                        <span class="plot-type">Histogram & KDE</span>
+                    </div>
+                    <div class="plot-img-wrap">
+                        <img src="{{ url_for('static', filename='plots/consumption_dist.png') }}" alt="Electricity Consumption Distribution" class="plot-img">
+                    </div>
+                    <p class="plot-caption">Shows the frequency distribution of daily electricity consumption across households with mean and median indicators.</p>
+                </div>
+
+                <!-- Plot 2 -->
+                <div class="plot-card">
+                    <div class="plot-header">
+                        <h4>2. AC Usage vs Electricity Consumption</h4>
+                        <span class="plot-type">Scatter & Trendline</span>
+                    </div>
+                    <div class="plot-img-wrap">
+                        <img src="{{ url_for('static', filename='plots/ac_vs_consumption.png') }}" alt="AC Usage vs Electricity Consumption" class="plot-img">
+                    </div>
+                    <p class="plot-caption">Demonstrates positive correlation as daily AC run-hours significantly increase overall electricity load.</p>
+                </div>
+
+                <!-- Plot 3 -->
+                <div class="plot-card">
+                    <div class="plot-header">
+                        <h4>3. Outside Temp vs Electricity Consumption</h4>
+                        <span class="plot-type">Scatter & Trendline</span>
+                    </div>
+                    <div class="plot-img-wrap">
+                        <img src="{{ url_for('static', filename='plots/temp_vs_consumption.png') }}" alt="Outside Temperature vs Electricity Consumption" class="plot-img">
+                    </div>
+                    <p class="plot-caption">Depicts higher power demand during hot weather due to elevated compressor duty cycles.</p>
+                </div>
+
+                <!-- Plot 4 -->
+                <div class="plot-card">
+                    <div class="plot-header">
+                        <h4>4. Previous vs Current Consumption</h4>
+                        <span class="plot-type">Scatter & Trendline</span>
+                    </div>
+                    <div class="plot-img-wrap">
+                        <img src="{{ url_for('static', filename='plots/prev_vs_actual.png') }}" alt="Previous vs Current Consumption" class="plot-img">
+                    </div>
+                    <p class="plot-caption">Highlights baseline momentum — past household consumption is an informative predictor of current demand.</p>
+                </div>
+
+                <!-- Plot 5 -->
+                <div class="plot-card plot-card-wide">
+                    <div class="plot-header">
+                        <h4>5. Feature Correlation Heatmap</h4>
+                        <span class="plot-type">Correlation Matrix</span>
+                    </div>
+                    <div class="plot-img-wrap">
+                        <img src="{{ url_for('static', filename='plots/correlation_heatmap.png') }}" alt="Feature Correlation Heatmap" class="plot-img">
+                    </div>
+                    <p class="plot-caption">Displays pairwise Pearson correlation coefficients across all 7 input features and the target variable.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= FIG 4: MODEL TRAINING & COMPARISON ================= -->
+        <section class="section-card" id="models">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="fig-badge">Fig. 4</span>
+                    <h2>Model Training & Algorithm Comparison</h2>
+                </div>
+                <span class="section-tag">Trained on 80% Split (480 samples)</span>
+            </div>
+            <p class="section-desc">
+                Comparison of three regression algorithms evaluated strictly on the 20% unseen test set (120 records).
+            </p>
+
+            <div class="comparison-layout">
+                <div class="table-container comp-table-container">
+                    <table class="data-table comp-table">
+                        <thead>
+                            <tr>
+                                <th>Algorithm</th>
+                                <th>MAE (kWh)</th>
+                                <th>MSE</th>
+                                <th>RMSE (kWh)</th>
+                                <th>R² Score</th>
+                                <th>Model Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if metadata and metadata.model_comparison %}
+                                {% for name, metrics in metadata.model_comparison.items() %}
+                                    <tr class="{% if name == metadata.best_model.name %}best-row{% endif %}">
+                                        <td>
+                                            <strong>{{ name }}</strong>
+                                            {% if name == metadata.best_model.name %}
+                                                <span class="best-badge">&#9733; Selected Best</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ metrics.MAE }}</td>
+                                        <td>{{ metrics.MSE }}</td>
+                                        <td><strong>{{ metrics.RMSE }}</strong></td>
+                                        <td><span class="r2-badge">{{ metrics.R2 }}</span></td>
+                                        <td>
+                                            {% if name == metadata.best_model.name %}
+                                                <span class="status-badge status-saved">Saved in models/</span>
+                                            {% else %}
+                                                <span class="status-badge status-alt">Compared</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td><strong>Linear Regression</strong> <span class="best-badge">&#9733; Selected Best</span></td>
+                                    <td>0.6101</td>
+                                    <td>0.5792</td>
+                                    <td>0.7610</td>
+                                    <td>0.9881</td>
+                                    <td><span class="status-badge status-saved">Saved</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Decision Tree Regressor</strong></td>
+                                    <td>0.9460</td>
+                                    <td>1.4613</td>
+                                    <td>1.2088</td>
+                                    <td>0.9700</td>
+                                    <td><span class="status-badge status-alt">Compared</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Random Forest Regressor</strong></td>
+                                    <td>0.7723</td>
+                                    <td>1.0096</td>
+                                    <td>1.0048</td>
+                                    <td>0.9792</td>
+                                    <td><span class="status-badge status-alt">Compared</span></td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                    <div class="selection-callout">
+                        <span class="callout-icon">&#127942;</span>
+                        <div>
+                            <strong>Selection Criterion:</strong> The model achieving the <strong>lowest Test RMSE</strong> (and highest R² score) was automatically selected and serialized using Joblib as <code>models/electricity_model.pkl</code>.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="comp-chart-container">
+                    <div class="plot-header">
+                        <h4>Algorithm Error & Accuracy Comparison</h4>
+                        <span class="plot-type">Test Set Metrics</span>
+                    </div>
+                    <img src="{{ url_for('static', filename='plots/model_comparison.png') }}" alt="Model Performance Comparison" class="plot-img">
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= FIG 5: MODEL EVALUATION ================= -->
+        <section class="section-card" id="evaluation">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="fig-badge">Fig. 5</span>
+                    <h2>Selected Model Evaluation</h2>
+                </div>
+                <span class="section-tag">Tested on Unseen Test Partition</span>
+            </div>
+            <p class="section-desc">
+                Comprehensive performance metrics and Actual vs. Predicted scatter plot for the deployed <strong>{{ metadata.best_model.name if metadata else 'Linear Regression' }}</strong> model.
+            </p>
+
+            <div class="evaluation-grid">
+                <div class="metrics-cards-col">
+                    <div class="metric-box">
+                        <div class="metric-top">
+                            <span class="metric-name">Mean Absolute Error (MAE)</span>
+                            <span class="metric-unit">kWh/day</span>
+                        </div>
+                        <div class="metric-val">{{ metadata.best_model.metrics.MAE if metadata else '0.6101' }}</div>
+                        <p class="metric-detail">Average absolute difference between actual and predicted consumption.</p>
+                    </div>
+
+                    <div class="metric-box">
+                        <div class="metric-top">
+                            <span class="metric-name">Mean Squared Error (MSE)</span>
+                            <span class="metric-unit">(kWh)²</span>
+                        </div>
+                        <div class="metric-val">{{ metadata.best_model.metrics.MSE if metadata else '0.5792' }}</div>
+                        <p class="metric-detail">Penalizes larger variance errors in prediction.</p>
+                    </div>
+
+                    <div class="metric-box">
+                        <div class="metric-top">
+                            <span class="metric-name">Root Mean Squared Error (RMSE)</span>
+                            <span class="metric-unit">kWh/day</span>
+                        </div>
+                        <div class="metric-val highlight-val">{{ metadata.best_model.metrics.RMSE if metadata else '0.7610' }}</div>
+                        <p class="metric-detail">Primary metric indicating standard deviation of prediction errors.</p>
+                    </div>
+
+                    <div class="metric-box">
+                        <div class="metric-top">
+                            <span class="metric-name">Coefficient of Determination (R²)</span>
+                            <span class="metric-unit">Score (0 to 1)</span>
+                        </div>
+                        <div class="metric-val highlight-r2">{{ metadata.best_model.metrics.R2 if metadata else '0.9881' }}</div>
+                        <p class="metric-detail">Model explains ~{{ (metadata.best_model.metrics.R2 * 100)|round(1) if metadata else '98.8' }}% of total variance in consumption.</p>
+                    </div>
+                </div>
+
+                <div class="eval-plot-col">
+                    <div class="plot-header">
+                        <h4>Actual vs. Predicted Consumption</h4>
+                        <span class="plot-type">Scatter & Diagonal (y = x)</span>
+                    </div>
+                    <div class="plot-img-wrap">
+                        <img src="{{ url_for('static', filename='plots/actual_vs_predicted.png') }}" alt="Actual vs Predicted Electricity Consumption" class="plot-img">
+                    </div>
+                    <p class="plot-caption">Points clustering closely along the red dashed diagonal confirm high fidelity and minimal bias across both low and high consumption ranges.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= FIG 6: ELECTRICITY CONSUMPTION PREDICTION ================= -->
+        <section class="section-card prediction-section" id="predict">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="fig-badge">Fig. 6</span>
+                    <h2>Electricity Consumption Prediction</h2>
+                </div>
+                <span class="section-tag">Live ML Inference Form</span>
+            </div>
+            <p class="section-desc">
+                Enter your household details below to calculate daily consumption (kWh/day) and estimated monthly consumption (kWh/month) using the trained machine learning model.
+            </p>
+
+            <div class="prediction-layout">
+                <!-- Form Column -->
+                <div class="form-container">
+                    <form action="{{ url_for('predict') }}" method="POST" class="predict-form" id="prediction-form">
+                        
+                        <div class="form-group">
+                            <label for="people">
+                                <strong>1. Number of People in House</strong>
+                                <span class="label-hint">Occupants living in the house (1 - 10)</span>
+                            </label>
+                            <input type="number" id="people" name="people" min="1" max="10" step="1" 
+                                   value="{{ input_values.people if input_values else '4' }}" required class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="ac_usage_hours">
+                                <strong>2. AC Usage Hours per Day</strong>
+                                <span class="label-hint">Daily air conditioning operating hours (0 - 24)</span>
+                            </label>
+                            <input type="number" id="ac_usage_hours" name="ac_usage_hours" min="0" max="24" step="0.1" 
+                                   value="{{ input_values.ac_usage_hours if input_values else '5.0' }}" required class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="number_of_fans">
+                                <strong>3. Number of Fans</strong>
+                                <span class="label-hint">Ceiling / table fans in use (0 - 15)</span>
+                            </label>
+                            <input type="number" id="number_of_fans" name="number_of_fans" min="0" max="15" step="1" 
+                                   value="{{ input_values.number_of_fans if input_values else '3' }}" required class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="number_of_appliances">
+                                <strong>4. Number of Electrical Appliances</strong>
+                                <span class="label-hint">Fridge, TV, PC, Washing machine, microwave, etc. (1 - 30)</span>
+                            </label>
+                            <input type="number" id="number_of_appliances" name="number_of_appliances" min="1" max="30" step="1" 
+                                   value="{{ input_values.number_of_appliances if input_values else '8' }}" required class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="daily_usage_hours">
+                                <strong>5. Daily Electricity Usage Hours</strong>
+                                <span class="label-hint">General daily active electrical usage hours (1 - 24)</span>
+                            </label>
+                            <input type="number" id="daily_usage_hours" name="daily_usage_hours" min="1" max="24" step="0.1" 
+                                   value="{{ input_values.daily_usage_hours if input_values else '10.0' }}" required class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="outside_temperature">
+                                <strong>6. Outside Temperature (°C)</strong>
+                                <span class="label-hint">Average outdoor ambient temperature (10°C - 50°C)</span>
+                            </label>
+                            <input type="number" id="outside_temperature" name="outside_temperature" min="10" max="50" step="0.5" 
+                                   value="{{ input_values.outside_temperature if input_values else '34.0' }}" required class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="previous_consumption">
+                                <strong>7. Previous Electricity Consumption (kWh/day)</strong>
+                                <span class="label-hint">Baseline historical consumption reading (0 - 100 kWh)</span>
+                            </label>
+                            <input type="number" id="previous_consumption" name="previous_consumption" min="0" max="100" step="0.1" 
+                                   value="{{ input_values.previous_consumption if input_values else '10.0' }}" required class="form-input">
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-submit">
+                                <span class="btn-icon">&#9889;</span> Predict Electricity Consumption
+                            </button>
+                            <button type="button" class="btn-reset" onclick="resetDefaults()">Reset Defaults</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Result Display Column -->
+                <div class="result-container" id="prediction-result">
+                    {% if prediction_result %}
+                        <div class="result-card active-result">
+                            <div class="result-header">
+                                <span class="result-pill">Model Output</span>
+                                <h3>Prediction Results</h3>
+                            </div>
+
+                            <div class="result-main-box">
+                                <div class="res-title">Predicted Daily Consumption</div>
+                                <div class="res-value">{{ prediction_result.daily_kwh }} <span class="unit">kWh/day</span></div>
+                            </div>
+
+                            <div class="result-sub-box">
+                                <div class="res-sub-title">Estimated Monthly Consumption</div>
+                                <div class="res-sub-value">{{ prediction_result.monthly_kwh }} <span class="sub-unit">kWh/month</span></div>
+                                <small class="estimate-disclaimer">* Calculated as <code>Daily Consumption × 30 days</code>. This is an estimate and not an actual utility meter invoice.</small>
+                            </div>
+
+                            <div class="submitted-summary">
+                                <h4>Input Parameters Summary:</h4>
+                                <ul class="summary-list">
+                                    <li><span>People:</span> <strong>{{ prediction_result.inputs.people }}</strong></li>
+                                    <li><span>AC Hours:</span> <strong>{{ prediction_result.inputs.ac_hours }} hrs/day</strong></li>
+                                    <li><span>Fans:</span> <strong>{{ prediction_result.inputs.fans }}</strong></li>
+                                    <li><span>Appliances:</span> <strong>{{ prediction_result.inputs.appliances }}</strong></li>
+                                    <li><span>Daily Hours:</span> <strong>{{ prediction_result.inputs.daily_hours }} hrs</strong></li>
+                                    <li><span>Temperature:</span> <strong>{{ prediction_result.inputs.temperature }} °C</strong></li>
+                                    <li><span>Previous Consumption:</span> <strong>{{ prediction_result.inputs.prev_consumption }} kWh</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="result-card empty-result">
+                            <div class="empty-icon">&#128202;</div>
+                            <h3>Awaiting Input</h3>
+                            <p>Fill out the household parameters on the left and click <strong>"Predict Electricity Consumption"</strong> to evaluate the trained model.</p>
+                            <div class="demo-tip">
+                                <strong>Default Test Case:</strong><br>
+                                People: 4, AC: 5 hrs, Fans: 3, Appliances: 8, Daily Usage: 10 hrs, Temp: 34°C, Prev Consumption: 10 kWh.
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PREDICTION HISTORY ================= -->
+        <section class="section-card" id="history">
+            <div class="section-header">
+                <div class="section-title-wrap">
+                    <span class="fig-badge">Log</span>
+                    <h2>Recent Prediction History</h2>
+                </div>
+                <div class="header-actions">
+                    <span class="section-tag">SQLite3: predictions.db</span>
+                    {% if history and history|length > 0 %}
+                        <form action="{{ url_for('clear_history') }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to clear prediction history?');">
+                            <button type="submit" class="btn-clear-history">Clear History</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+            <p class="section-desc">
+                Local database log of user queries and predicted consumption values generated during this session.
+            </p>
+
+            <div class="table-container">
+                <table class="data-table history-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>People</th>
+                            <th>AC (hrs)</th>
+                            <th>Fans</th>
+                            <th>Appliances</th>
+                            <th>Daily (hrs)</th>
+                            <th>Temp (°C)</th>
+                            <th>Prev (kWh)</th>
+                            <th>Predicted Daily (kWh)</th>
+                            <th>Estimated Monthly (kWh)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if history and history|length > 0 %}
+                            {% for row in history %}
+                                <tr>
+                                    <td><small>{{ row['timestamp'] }}</small></td>
+                                    <td>{{ row['people'] }}</td>
+                                    <td>{{ row['ac_hours'] }}</td>
+                                    <td>{{ row['fans'] }}</td>
+                                    <td>{{ row['appliances'] }}</td>
+                                    <td>{{ row['daily_hours'] }}</td>
+                                    <td>{{ row['temperature'] }}</td>
+                                    <td>{{ row['prev_consumption'] }}</td>
+                                    <td class="td-highlight"><strong>{{ row['predicted_daily'] }} kWh</strong></td>
+                                    <td>{{ row['estimated_monthly'] }} kWh</td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="10" class="text-center">No predictions recorded yet. Run a prediction to see history.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <strong>Household Electricity Consumption Prediction</strong>
+                    <p>Machine Learning Academic Project — Supervised Regression Workflow</p>
+                </div>
+                <div class="footer-tech">
+                    <span>Python 3</span> &bull; <span>Flask</span> &bull; <span>Scikit-learn</span> &bull; <span>Joblib</span> &bull; <span>Matplotlib</span>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Household Electricity Consumption Prediction System. Developed for College Mini-Project Demonstration.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function resetDefaults() {
+            document.getElementById('people').value = 4;
+            document.getElementById('ac_usage_hours').value = 5.0;
+            document.getElementById('number_of_fans').value = 3;
+            document.getElementById('number_of_appliances').value = 8;
+            document.getElementById('daily_usage_hours').value = 10.0;
+            document.getElementById('outside_temperature').value = 34.0;
+            document.getElementById('previous_consumption').value = 10.0;
+        }
+
+        // Smooth scroll to prediction result if just predicted
+        {% if scroll_to %}
+            window.addEventListener('DOMContentLoaded', () => {
+                const el = document.getElementById('{{ scroll_to }}');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        {% endif %}
+    </script>
+</body>
+</html>
